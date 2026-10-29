@@ -8,7 +8,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;700&display=swap');
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{width:100%;height:100%;background:#020617;overflow:hidden;font-family:'Chakra Petch',sans-serif;color:#fff;user-select:none}
-  #app{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center}
+  #app{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center;background:#020617}
   .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;z-index:20;background:linear-gradient(160deg,#0f172a 0%,#1e293b 40%,#b91c1c 100%);transition:opacity .3s,visibility .3s}
   .screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
   .title{font-family:'Press Start 2P',cursive;font-size:clamp(1.4rem,4.5vw,2.6rem);line-height:1.4;margin-bottom:8px;background:linear-gradient(90deg,#facc15,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -44,7 +44,7 @@
   .controls button.pressed{background:#f59e0b;transform:scale(.94)}
   .overlay-box{background:rgba(15,23,42,.95);border:2px solid #334155;border-radius:24px;padding:40px 36px;max-width:90vw}
   .overlay-box h2{font-size:2rem;margin-bottom:10px}
-  canvas{display:block;background:#87ceeb}
+  canvas{display:block;width:100%;height:100%;object-fit:cover;background:#87ceeb}
 </style>
 </head>
 <body>
@@ -128,11 +128,12 @@ const gunEl = document.getElementById("gunStatus");
 const levelNumEl = document.getElementById("levelNum");
 const musicToggle = document.getElementById("musicToggle");
 
-let W=960,H=540;
+// ใช้ความละเอียดเสมือนมาตรฐานฐาน (Virtual Resolution) 960x540 เพื่อให้ทุกอย่างจัดวางสัดส่วนเป๊ะเสมอ
+let W=960, H=540;
 let unlocked = Math.max(1,Math.min(5,+(localStorage.getItem("saitama_unlock")||1)));
 let currentLevel=1,lives=3,gameRunning=false,animId=0,invuln=0,cameraX=0;
 let particles = [];
-let checkpoint = {x: 60, y: H-120, active: false};
+let checkpoint = {x: 60, y: H-130, active: false};
 
 /* ===== INPUT ===== */
 const input = {left:false,right:false,up:false,down:false,shoot:false};
@@ -245,12 +246,12 @@ function updateMusicUI(){musicToggle.classList.toggle("on",musicOn);document.get
 
 /* ===== PARTICLE SYSTEM ===== */
 function spawnParticles(x, y, color){
-  for(let i=0; i<8; i++){
+  for(let i=0; i<10; i++){
     particles.push({
       x: x, y: y,
-      vx: (Math.random()-0.5)*6,
-      vy: (Math.random()-0.5)*6 - 2,
-      life: 30,
+      vx: (Math.random()-0.5)*7,
+      vy: (Math.random()-0.5)*7 - 2,
+      life: 35,
       color: color
     });
   }
@@ -270,14 +271,36 @@ function updateParticles(){
 function drawParticles(){
   for(const p of particles){
     ctx.fillStyle = p.color;
-    ctx.fillRect(p.x, p.y, 4, 4);
+    ctx.fillRect(p.x, p.y, 5, 5);
   }
 }
 
 /* ===== FULLSCREEN & RESIZE ===== */
-function toggleFS(){const el=document.documentElement;if(!document.fullscreenElement){el.requestFullscreen?.()||el.webkitRequestFullscreen?.()}else{document.exitFullscreen?.()||document.webkitExitFullscreen?.()}}
-function resize(){const ratio=16/9;let w=window.innerWidth,h=window.innerHeight;if(w/h>ratio)w=h*ratio;else h=w/ratio;canvas.width=W=Math.floor(w);canvas.height=H=Math.floor(h);canvas.style.width=w+"px";canvas.style.height=h+"px"}
-window.addEventListener("resize",resize);resize();
+function toggleFS(){
+  const el=document.documentElement;
+  if(!document.fullscreenElement){
+    el.requestFullscreen?.()||el.webkitRequestFullscreen?.();
+  }else{
+    document.exitFullscreen?.()||document.webkitExitFullscreen?.();
+  }
+}
+
+function resize(){
+  // ปรับสเกลแคนวาสให้เต็มจอโดยใช้ขนาดพิกเซลจริงของหน้าจอ
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  
+  // คำนวณสเกลเพื่อแปลงพิกเซล Virtual (960x540) ให้ขยายเต็มจอพอดีโดยสัดส่วนไม่เพี้ยน
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const scaleX = window.innerWidth / 960;
+  const scaleY = window.innerHeight / 540;
+  ctx.scale(scaleX, scaleY);
+}
+window.addEventListener("resize", resize);
+document.addEventListener("fullscreenchange", () => {
+  setTimeout(resize, 100);
+});
+resize();
 
 /* ===== LEVELS ===== */
 const LEVELS=[
@@ -290,44 +313,44 @@ const LEVELS=[
 
 function buildLevel(lv){
   const L=LEVELS[lv-1];
-  const platforms=[{x:0,y:H-50,w:1600,h:60}];
-  platforms.push({x:180,y:H-160,w:140,h:18},{x:420,y:H-240,w:160,h:18},{x:700,y:H-160,w:140,h:18});
-  if(lv>=3){platforms.push({x:280,y:H-320,w:130,h:18},{x:560,y:H-360,w:140,h:18})}
-  if(lv>=4){platforms.push({x:50,y:H-280,w:120,h:18},{x:900,y:H-280,w:130,h:18})}
+  const platforms=[{x:0,y:540-50,w:1600,h:60}];
+  platforms.push({x:180,y:540-165,w:150,h:22},{x:420,y:540-250,w:170,h:22},{x:700,y:540-165,w:150,h:22});
+  if(lv>=3){platforms.push({x:280,y:540-330,w:140,h:22},{x:560,y:540-370,w:150,h:22})}
+  if(lv>=4){platforms.push({x:50,y:540-290,w:130,h:22},{x:900,y:540-290,w:140,h:22})}
 
   const mushrooms=[];
-  const pos=[[90,H-90],[220,H-195],[480,H-275],[760,H-195],[1100,H-90],[320,H-355],[620,H-395],[80,H-315],[980,H-315],[500,H-90],[350,H-90],[850,H-90]];
-  for(let i=0;i<L.mush;i++) mushrooms.push({x:pos[i][0],y:pos[i][1],w:24,h:24,got:false});
+  const pos=[[90,540-95],[220,540-205],[480,540-285],[760,540-205],[1100,540-95],[320,540-365],[620,540-405],[80,540-325],[980,540-325],[500,540-95],[350,540-95],[850,540-95]];
+  for(let i=0;i<L.mush;i++) mushrooms.push({x:pos[i][0],y:pos[i][1],w:32,h:32,got:false});
 
   const powerups=[];
-  powerups.push({x:350,y:H-280,w:28,h:28,type:"gun",got:false}); // หมัดจริงจัง
-  if(lv>=2) powerups.push({x:600,y:H-200,w:28,h:28,type:"life",got:false});
-  if(lv>=3) powerups.push({x:850,y:H-320,w:28,h:28,type:"star",got:false});
-  powerups.push({x:720,y:H-200,w:28,h:28,type:"highjump",got:false}); 
-  if(lv===5) powerups.push({x:400,y:H-180,w:28,h:28,type:"gun",got:false});
+  powerups.push({x:350,y:540-290,w:36,h:36,type:"gun",got:false}); 
+  if(lv>=2) powerups.push({x:600,y:540-205,w:36,h:36,type:"life",got:false});
+  if(lv>=3) powerups.push({x:850,y:540-330,w:36,h:36,type:"star",got:false});
+  powerups.push({x:720,y:540-205,w:36,h:36,type:"highjump",got:false}); 
+  if(lv===5) powerups.push({x:400,y:540-185,w:36,h:36,type:"gun",got:false});
 
   const enemies=[];
   for(let i=0;i<L.enemies;i++){
-    enemies.push({x:300+i*180,y:H-90,w:40,h:34,spd:1.1+lv*.12,min:250+i*40,max:550+i*80,dir:i%2?-1:1});
+    enemies.push({x:300+i*180,y:540-94,w:48,h:44,spd:1.1+lv*.12,min:250+i*40,max:550+i*80,dir:i%2?-1:1});
   }
 
   let boss=null;
   if(L.boss){
-    boss={x:1100,y:H-180,w:90,h:90,hp:12,max:12,spd:1.8,dir:-1,shootTimer:0};
+    boss={x:1100,y:540-190,w:100,h:100,hp:12,max:12,spd:1.8,dir:-1,shootTimer:0};
   }
 
-  const cp = {x: 750, y: H-160-50, w: 32, h: 50, active: false};
-  const goal={x:1400,y:H-110,w:40,h:60};
-  const spikes=[{x:480,y:H-70,w:70,h:20}];
-  if(lv>=2) spikes.push({x:780,y:H-70,w:70,h:20});
-  if(lv>=4) spikes.push({x:200,y:H-70,w:60,h:20});
+  const cp = {x: 750, y: 540-165-60, w: 38, h: 60, active: false};
+  const goal={x:1400,y:540-120,w:50,h:70};
+  const spikes=[{x:480,y:540-72,w:80,h:22}];
+  if(lv>=2) spikes.push({x:780,y:540-72,w:80,h:22});
+  if(lv>=4) spikes.push({x:200,y:540-72,w:70,h:22});
 
   return {platforms,mushrooms,powerups,enemies,spikes,boss,checkpointObj:cp,goal,bg:L.bg,ground:L.ground,bullets:[]};
 }
 
 function createPlayer(){
   return {
-    x:60,y:H-120,w:36,h:56,
+    x:60,y:540-130,w:44,h:68,
     vx:0,vy:0,onGround:false,crouch:false,
     facing:1,walkPhase:0,state:"idle",
     hasGun:false, starTime:0, highJump:false
@@ -354,23 +377,22 @@ function updatePlayer(){
   }
 
   if(input.down&&p.onGround){
-    if(!p.crouch){p.y+=22;p.h=34;p.crouch=true}
+    if(!p.crouch){p.y+=26;p.h=42;p.crouch=true}
   }else if(p.crouch&&p.onGround){
-    p.y-=22;p.h=56;
+    p.y-=26;p.h=68;
     let blocked=false;
     for(const pl of world.platforms) if(aabb(p,pl)){blocked=true;break}
-    if(blocked){p.y+=22;p.h=34}else p.crouch=false;
+    if(blocked){p.y+=26;p.h=42}else p.crouch=false;
   }
 
-  // ปล่อยหมัดคลื่นกระแทก (Serious Punch Wave)
   if(input.shoot && p.hasGun){
     input.shoot=false;
     playSound("punch");
     world.bullets.push({
-      x: p.facing===1 ? p.x+p.w : p.x-18,
-      y: p.y + 14,
-      w:20, h:12,
-      vx: p.facing * 12,
+      x: p.facing===1 ? p.x+p.w : p.x-22,
+      y: p.y + 18,
+      w:24, h:14,
+      vx: p.facing * 13,
       life: 90
     });
   }
@@ -388,7 +410,7 @@ function updatePlayer(){
     else{if(p.vx>0)p.x=pl.x-p.w;else if(p.vx<0)p.x=pl.x+pl.w;p.vx=0}
   }
   if(p.x<0)p.x=0;
-  if(p.y>H+80) respawnAtCheckpoint();
+  if(p.y>540+80) respawnAtCheckpoint();
 
   if(!p.onGround) p.state="jump";
   else if(p.crouch) p.state="crouch";
@@ -396,7 +418,7 @@ function updatePlayer(){
   else if(Math.abs(p.vx)>.4){p.state="walk";p.walkPhase+=.22}
   else p.state="idle";
 
-  cameraX=Math.max(0,Math.min(p.x-W*.35,1450-W));
+  cameraX=Math.max(0,Math.min(p.x-960*.35,1450-960));
 }
 
 function updateBullets(){
@@ -404,13 +426,13 @@ function updateBullets(){
     const b=world.bullets[i];
     b.x+=b.vx;
     b.life--;
-    if(b.life<=0 || b.x<cameraX-50 || b.x>cameraX+W+50){
+    if(b.life<=0 || b.x<cameraX-50 || b.x>cameraX+960+50){
       world.bullets.splice(i,1);
       continue;
     }
     for(let j=world.enemies.length-1;j>=0;j--){
       if(aabb(b,world.enemies[j])){
-        spawnParticles(world.enemies[j].x+20, world.enemies[j].y+15, "#ef4444");
+        spawnParticles(world.enemies[j].x+24, world.enemies[j].y+22, "#ef4444");
         world.enemies.splice(j,1);
         world.bullets.splice(i,1);
         msgEl.textContent="👊 โดนหมัดเดียวจอด!";
@@ -418,12 +440,12 @@ function updateBullets(){
       }
     }
     if(world.boss && aabb(b,world.boss)){
-      world.boss.hp -= 3; // หมัดไซตามะแรงพิเศษ
+      world.boss.hp -= 3;
       world.bullets.splice(i,1);
       spawnParticles(b.x, b.y, "#facc15");
       msgEl.textContent=`👊 หมัดสะเทือน! บอสเหลือ ${Math.max(0, world.boss.hp)} HP!`;
       if(world.boss.hp<=0){
-        spawnParticles(world.boss.x+45, world.boss.y+45, "#fbbf24");
+        spawnParticles(world.boss.x+50, world.boss.y+50, "#fbbf24");
         world.boss=null;
         msgEl.textContent="👑 ชนะแล้ว! สมกับเป็นไซตามะ!";
       }
@@ -448,7 +470,7 @@ function checkItems(){
     if(!m.got&&aabb(player,m)){
       m.got=true;
       playSound("collect");
-      spawnParticles(m.x+12, m.y+12, "#ef4444");
+      spawnParticles(m.x+16, m.y+16, "#ef4444");
       msgEl.textContent="🍄 เก็บเห็ดพลังงานแล้ว!";
     }
   }
@@ -457,7 +479,7 @@ function checkItems(){
     if(aabb(player,pw)){
       pw.got=true;
       playSound("collect");
-      spawnParticles(pw.x+14, pw.y+14, "#facc15");
+      spawnParticles(pw.x+18, pw.y+18, "#facc15");
       if(pw.type==="gun"){
         player.hasGun=true;
         msgEl.textContent="🔥 ได้รับพลังหมัดจริงจัง! กดปุ่ม 👊 เพื่อโจมตี";
@@ -481,7 +503,7 @@ function checkItems(){
     cp.active = true;
     checkpoint = {x: cp.x, y: cp.y, active: true};
     playSound("checkpoint");
-    spawnParticles(cp.x+16, cp.y+25, "#22c55e");
+    spawnParticles(cp.x+19, cp.y+30, "#22c55e");
     msgEl.textContent="🚩 บันทึก Checkpoint สำเร็จ!";
   }
 }
@@ -491,11 +513,11 @@ function checkHazards(){
   for(const s of world.spikes) if(aabb(player,s)){hurt();return}
   for(const e of world.enemies) if(aabb(player,e)){hurt();return}
   if(world.boss&&aabb(player,world.boss)){
-    if(player.vy>0&&player.y+player.h<world.boss.y+40){
-      world.boss.hp-=4; // เหยียบแรงสะใจสไตล์ไซตามะ
+    if(player.vy>0&&player.y+player.h<world.boss.y+50){
+      world.boss.hp-=4;
       player.vy=-12;
       playSound("jump");
-      spawnParticles(world.boss.x+45, world.boss.y+20, "#fbbf24");
+      spawnParticles(world.boss.x+50, world.boss.y+25, "#fbbf24");
       msgEl.textContent=`💥 กระโดดเหยียบบอส! เหลือ ${Math.max(0, world.boss.hp)} HP`;
       if(world.boss.hp<=0){world.boss=null;msgEl.textContent="👑 กำจัดบอสราบคาบ!"}
     }else hurt();
@@ -524,8 +546,8 @@ function respawnAtCheckpoint(){
     return;
   }
   player.x = checkpoint.active ? checkpoint.x : 60;
-  player.y = checkpoint.active ? checkpoint.y - 20 : H-120;
-  player.vy = 0; player.vx = 0; player.crouch = false; player.h = 56;
+  player.y = checkpoint.active ? checkpoint.y - 30 : 540-130;
+  player.vy = 0; player.vx = 0; player.crouch = false; player.h = 68;
   player.hasGun = false;
   invuln = performance.now() + 1500;
   msgEl.textContent=`ฟื้นคืนชีพที่จุดเซฟ! เหลือ ${lives} ชีวิต`;
@@ -548,13 +570,45 @@ function checkGoal(){
   }else msgEl.textContent=`ยังเก็บเห็ดไม่ครบ ขาดอีก ${left} ดอก`;
 }
 
-/* ===== DRAW ===== */
-function draw(){
+/* ===== DRAW BACKGROUND & ENVIRONMENT ===== */
+function drawBackground(){
   ctx.fillStyle=world.bg;
   ctx.fillRect(0,0,W,H);
-  ctx.fillStyle="rgba(255,255,255,.12)";
-  ctx.beginPath();ctx.ellipse(180-cameraX*.25,H-30,160,55,0,0,7);ctx.fill();
-  ctx.beginPath();ctx.ellipse(580-cameraX*.15,H-20,200,45,0,0,7);ctx.fill();
+
+  // วาดภูเขาฉากหลัง
+  ctx.fillStyle="rgba(255,255,255,0.18)";
+  ctx.beginPath();
+  let mOff = cameraX * 0.25;
+  ctx.moveTo(-mOff, 540-50);
+  ctx.lineTo(150-mOff, 540-220);
+  ctx.lineTo(350-mOff, 540-50);
+  ctx.lineTo(550-mOff, 540-260);
+  ctx.lineTo(850-mOff, 540-50);
+  ctx.lineTo(1100-mOff, 540-200);
+  ctx.lineTo(1450-mOff, 540-50);
+  ctx.lineTo(1700-mOff, 540-240);
+  ctx.lineTo(2000-mOff, 540-50);
+  ctx.lineTo(2000, 540);
+  ctx.lineTo(0, 540);
+  ctx.fill();
+
+  // วาดก้อนเมฆฉากหลัง
+  ctx.fillStyle="rgba(255,255,255,0.3)";
+  const cOff = cameraX * 0.35;
+  for(let i=0; i<4; i++){
+    let cx = (i * 450 - cOff) % (960 + 500) - 100;
+    let cy = 60 + (i % 2) * 40;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 35, 0, Math.PI*2);
+    ctx.arc(cx + 25, cy - 15, 28, 0, Math.PI*2);
+    ctx.arc(cx + 55, cy, 30, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+/* ===== DRAW ===== */
+function draw(){
+  drawBackground();
 
   ctx.save();
   ctx.translate(-cameraX,0);
@@ -562,80 +616,83 @@ function draw(){
   for(const p of world.platforms){
     ctx.fillStyle=world.ground;
     ctx.fillRect(p.x,p.y,p.w,p.h);
-    ctx.fillStyle="rgba(255,255,255,.22)";
-    ctx.fillRect(p.x,p.y,p.w,5);
+    ctx.fillStyle="rgba(255,255,255,.3)";
+    ctx.fillRect(p.x,p.y,p.w,7);
+    ctx.fillStyle="rgba(0,0,0,.15)";
+    ctx.fillRect(p.x,p.y+p.h-6,p.w,6);
   }
+
   for(const s of world.spikes){
     ctx.fillStyle="#e2e8f0";
-    for(let i=0;i<s.w;i+=12){
+    for(let i=0;i<s.w;i+=14){
       ctx.beginPath();
-      ctx.moveTo(s.x+i,s.y+s.h);ctx.lineTo(s.x+i+6,s.y);ctx.lineTo(s.x+i+12,s.y+s.h);ctx.fill();
+      ctx.moveTo(s.x+i,s.y+s.h);ctx.lineTo(s.x+i+7,s.y);ctx.lineTo(s.x+i+14,s.y+s.h);ctx.fill();
     }
   }
 
   const cp = world.checkpointObj;
   if(cp){
-    ctx.fillStyle = "#94a3b8";
-    ctx.fillRect(cp.x+4, cp.y, 6, cp.h);
+    ctx.fillStyle = "#64748b";
+    ctx.fillRect(cp.x+6, cp.y, 8, cp.h);
     ctx.fillStyle = cp.active ? "#22c55e" : "#ef4444";
     ctx.beginPath();
-    ctx.moveTo(cp.x+10, cp.y+5);
-    ctx.lineTo(cp.x+32, cp.y+15);
-    ctx.lineTo(cp.x+10, cp.y+25);
+    ctx.moveTo(cp.x+14, cp.y+6);
+    ctx.lineTo(cp.x+38, cp.y+18);
+    ctx.lineTo(cp.x+14, cp.y+30);
     ctx.fill();
   }
 
   for(const m of world.mushrooms){
     if(m.got) continue;
-    ctx.fillStyle="#fef3c7";ctx.fillRect(m.x+8,m.y+12,8,12);
-    ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(m.x+12,m.y+12,12,Math.PI,0);ctx.fill();
+    ctx.fillStyle="#fef3c7";ctx.fillRect(m.x+10,m.y+14,12,18);
+    ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(m.x+16,m.y+14,16,Math.PI,0);ctx.fill();
     ctx.fillStyle="#fff";
-    ctx.beginPath();ctx.arc(m.x+8,m.y+9,2.5,0,7);ctx.fill();
-    ctx.beginPath();ctx.arc(m.x+16,m.y+7,2.5,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(m.x+10,m.y+10,3.5,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(m.x+22,m.y+8,3.5,0,7);ctx.fill();
   }
 
   for(const pw of world.powerups){
     if(pw.got) continue;
     if(pw.type==="gun"){
-      ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(pw.x+14,pw.y+14,13,0,7);ctx.fill();
-      ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(pw.x+14,pw.y+10,6,0,7);ctx.fill();
-      ctx.fillStyle="#fff";ctx.font="16px Arial";ctx.fillText("🥊",pw.x+4,pw.y+20);
+      ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(pw.x+18,pw.y+18,17,0,7);ctx.fill();
+      ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(pw.x+18,pw.y+13,8,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.font="20px Arial";ctx.fillText("🥊",pw.x+4,pw.y+26);
     }else if(pw.type==="life"){
-      ctx.fillStyle="#22c55e";ctx.beginPath();ctx.arc(pw.x+14,pw.y+14,13,0,7);ctx.fill();
-      ctx.fillStyle="#fff";ctx.font="18px Arial";ctx.fillText("🍄",pw.x+3,pw.y+21);
+      ctx.fillStyle="#22c55e";ctx.beginPath();ctx.arc(pw.x+18,pw.y+18,17,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.font="22px Arial";ctx.fillText("🍄",pw.x+3,pw.y+27);
     }else if(pw.type==="star"){
-      ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(pw.x+14,pw.y+14,13,0,7);ctx.fill();
-      ctx.fillStyle="#fff";ctx.font="18px Arial";ctx.fillText("⭐",pw.x+3,pw.y+21);
+      ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(pw.x+18,pw.y+18,17,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.font="22px Arial";ctx.fillText("⭐",pw.x+3,pw.y+27);
     }else if(pw.type==="highjump"){
-      ctx.fillStyle="#3b82f6";ctx.beginPath();ctx.arc(pw.x+14,pw.y+14,13,0,7);ctx.fill();
-      ctx.fillStyle="#fff";ctx.font="18px Arial";ctx.fillText("🥾",pw.x+3,pw.y+21);
+      ctx.fillStyle="#3b82f6";ctx.beginPath();ctx.arc(pw.x+18,pw.y+18,17,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.font="22px Arial";ctx.fillText("🥾",pw.x+3,pw.y+27);
     }
   }
 
   for(const b of world.bullets){
-    ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(b.x+b.w/2,b.y+b.h/2,8,0,7);ctx.fill();
-    ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(b.x+b.w/2,b.y+b.h/2,4,0,7);ctx.fill();
+    ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(b.x+b.w/2,b.y+b.h/2,10,0,7);ctx.fill();
+    ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(b.x+b.w/2,b.y+b.h/2,5,0,7);ctx.fill();
   }
 
   for(const e of world.enemies){
     ctx.fillStyle="#7c3aed";ctx.fillRect(e.x,e.y,e.w,e.h);
-    ctx.fillStyle="#fff";ctx.fillRect(e.x+8,e.y+8,8,8);ctx.fillRect(e.x+24,e.y+8,8,8);
-    ctx.fillStyle="#111";ctx.fillRect(e.x+10,e.y+10,4,4);ctx.fillRect(e.x+26,e.y+10,4,4);
+    ctx.fillStyle="#fff";ctx.fillRect(e.x+10,e.y+10,10,10);ctx.fillRect(e.x+28,e.y+10,10,10);
+    ctx.fillStyle="#111";ctx.fillRect(e.x+13,e.y+13,4,4);ctx.fillRect(e.x+31,e.y+13,4,4);
   }
 
   if(world.boss){
     const b=world.boss;
     ctx.fillStyle="#6b21a8";ctx.fillRect(b.x,b.y,b.w,b.h);
-    ctx.fillStyle="#fff";ctx.fillRect(b.x+16,b.y+22,18,18);ctx.fillRect(b.x+56,b.y+22,18,18);
-    ctx.fillStyle="#ef4444";ctx.fillRect(b.x+20,b.y+26,10,10);ctx.fillRect(b.x+60,b.y+26,10,10);
-    ctx.fillStyle="#1e293b";ctx.fillRect(b.x-15,b.y-22,b.w+30,12);
-    ctx.fillStyle="#ef4444";ctx.fillRect(b.x-15,b.y-22,(b.w+30)*(b.hp/b.max),12);
-    ctx.strokeStyle="#fff";ctx.strokeRect(b.x-15,b.y-22,b.w+30,12);
-    ctx.fillStyle="#fff";ctx.font="14px Arial";ctx.fillText("BOROS",b.x+b.w/2-24,b.y-28);
+    ctx.fillStyle="#fff";ctx.fillRect(b.x+18,b.y+24,20,20);ctx.fillRect(b.x+62,b.y+24,20,20);
+    ctx.fillStyle="#ef4444";ctx.fillRect(b.x+23,b.y+29,10,10);ctx.fillRect(b.x+67,b.y+29,10,10);
+    ctx.fillStyle="#1e293b";ctx.fillRect(b.x-20,b.y-26,b.w+40,14);
+    ctx.fillStyle="#ef4444";ctx.fillRect(b.x-20,b.y-26,(b.w+40)*(b.hp/b.max),14);
+    ctx.strokeStyle="#fff";ctx.strokeRect(b.x-20,b.y-26,b.w+40,14);
+    ctx.fillStyle="#fff";ctx.font="15px Arial";ctx.fillText("BOROS",b.x+b.w/2-28,b.y-32);
   }
 
   ctx.fillStyle="#fbbf24";ctx.fillRect(world.goal.x,world.goal.y,world.goal.w,world.goal.h);
-  ctx.font="28px Arial";ctx.fillText("🏁",world.goal.x+4,world.goal.y+38);
+  ctx.font="36px Arial";ctx.fillText("🏁",world.goal.x+4,world.goal.y+48);
 
   drawSaitama();
   drawParticles();
@@ -649,43 +706,38 @@ function drawSaitama(){
   const x=p.x,y=p.y,f=p.facing;
   ctx.save();
   ctx.translate(x+p.w/2,y);ctx.scale(f,1);ctx.translate(-p.w/2,0);
-  ctx.strokeStyle="#1e293b";ctx.lineWidth=5;ctx.lineCap="round";
+  ctx.strokeStyle="#1e293b";ctx.lineWidth=6;ctx.lineCap="round";
 
   if(p.state==="jump"){
-    ctx.beginPath();ctx.moveTo(10,38);ctx.lineTo(4,52);ctx.moveTo(26,38);ctx.lineTo(32,52);
-    ctx.moveTo(6,24);ctx.lineTo(-2,12);ctx.moveTo(30,24);ctx.lineTo(38,12);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(12,46);ctx.lineTo(4,64);ctx.moveTo(32,46);ctx.lineTo(40,64);
+    ctx.moveTo(8,28);ctx.lineTo(-2,14);ctx.moveTo(36,28);ctx.lineTo(46,14);ctx.stroke();
   }else if(p.state==="crouch"){
-    ctx.beginPath();ctx.moveTo(10,20);ctx.lineTo(4,30);ctx.moveTo(26,20);ctx.lineTo(32,30);
-    ctx.moveTo(6,14);ctx.lineTo(0,24);ctx.moveTo(30,14);ctx.lineTo(36,24);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(12,24);ctx.lineTo(4,36);ctx.moveTo(32,24);ctx.lineTo(40,36);
+    ctx.moveTo(8,18);ctx.lineTo(-2,30);ctx.moveTo(36,18);ctx.lineTo(46,30);ctx.stroke();
   }else if(p.state==="run"||p.state==="walk"){
-    const amp=p.state==="run"?9:5;const ph=Math.sin(p.walkPhase)*amp;
-    ctx.beginPath();ctx.moveTo(10,38);ctx.lineTo(8+ph,54);ctx.moveTo(26,38);ctx.lineTo(28-ph,54);
-    ctx.moveTo(6,24);ctx.lineTo(0-ph*.6,36);ctx.moveTo(30,24);ctx.lineTo(36+ph*.6,18);ctx.stroke();
+    const amp=p.state==="run"?11:6;const ph=Math.sin(p.walkPhase)*amp;
+    ctx.beginPath();ctx.moveTo(12,46);ctx.lineTo(10+ph,66);ctx.moveTo(32,46);ctx.lineTo(34-ph,66);
+    ctx.moveTo(8,28);ctx.lineTo(-2-ph*.6,44);ctx.moveTo(36,28);ctx.lineTo(44+ph*.6,22);ctx.stroke();
   }else{
-    ctx.beginPath();ctx.moveTo(10,40);ctx.lineTo(10,54);ctx.moveTo(26,40);ctx.lineTo(26,54);
-    ctx.moveTo(6,24);ctx.lineTo(2,36);ctx.moveTo(30,24);ctx.lineTo(34,36);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(12,48);ctx.lineTo(12,66);ctx.moveTo(32,48);ctx.lineTo(32,66);
+    ctx.moveTo(8,28);ctx.lineTo(2,44);ctx.moveTo(36,28);ctx.lineTo(42,44);ctx.stroke();
   }
 
-  // ชุดสูทฮีโร่สีเหลืองของไซตามะ
   ctx.fillStyle = "#eab308";
-  ctx.fillRect(6,p.crouch?14:18,24,p.crouch?16:24);
-  // เข็มขัดสีดำคาดหัวเข็มขัดสีแดง
+  ctx.fillRect(8,p.crouch?16:22,28,p.crouch?20:30);
   ctx.fillStyle = "#0f172a";
-  ctx.fillRect(6, p.crouch?24:32, 24, 4);
+  ctx.fillRect(8, p.crouch?28:40, 28, 5);
   ctx.fillStyle = "#ef4444";
-  ctx.fillRect(14, p.crouch?24:32, 8, 4);
+  ctx.fillRect(18, p.crouch?28:40, 10, 5);
 
-  // หัวโล้นไซตามะ (ผิวเนื้อ)
   ctx.fillStyle="#fde047";
-  ctx.beginPath();ctx.arc(18,10,11,0,7);ctx.fill();
-  // หน้าตานิ่งๆ เอกลักษณ์ไซตามะ (จุดตาดำเล็กๆ)
+  ctx.beginPath();ctx.arc(22,12,13,0,7);ctx.fill();
   ctx.fillStyle="#111";
-  ctx.fillRect(14,9,2,2);ctx.fillRect(20,9,2,2);
-  ctx.beginPath();ctx.arc(18,14,3,0,Math.PI);ctx.stroke(); // ปากยิ้มเรียบๆ
+  ctx.fillRect(17,11,3,3);ctx.fillRect(25,11,3,3);
+  ctx.beginPath();ctx.arc(22,17,4,0,Math.PI);ctx.stroke();
 
-  // ถุงมือสีแดง / หมัด
   ctx.fillStyle = "#ef4444";
-  ctx.fillRect(28, p.crouch?18:22, 8, 8);
+  ctx.fillRect(34, p.crouch?22:28, 10, 10);
 
   ctx.restore();
 }
@@ -699,7 +751,7 @@ function loop(){
     checkItems();
     checkHazards();
     checkGoal();
-    const got=world.mushrooms.filter(m=>m.got).length;
+    const got=world.mushrooms.filter(m=>!m.got).length;
     mushEl.textContent=`${got}/${world.mushrooms.length}`;
     gunEl.textContent = player.hasGun ? "หมัดจริงจัง" : "หมัดปกติ";
   }
@@ -734,7 +786,7 @@ function startLevel(n){
   livesEl.textContent=lives;levelNumEl.textContent=n;
   player=createPlayer();
   world=buildLevel(n);
-  checkpoint = {x: 60, y: H-120, active: false};
+  checkpoint = {x: 60, y: 540-130, active: false};
   cameraX=0;invuln=0;gameRunning=true;
   particles=[];
   msgEl.textContent = n===5 ? "ศึกตัดสินกับบอสดรก! เก็บหมัดจริงจังแล้วซัดเลย" : `ด่าน ${n}: ${LEVELS[n-1].name}`;
@@ -776,4 +828,4 @@ buildLevelButtons();
 updateMusicUI();
 </script>
 </body>
-</html>ห
+</html>
