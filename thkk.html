@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>Mushroom Boy - Saitama Edition</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@500;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#020617;overflow:hidden;font-family:'Chakra Petch',sans-serif;color:#fff;user-select:none}
+  #app{width:100%;height:100%;position:relative;display:flex;align-items:center;justify-content:center}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;z-index:20;background:linear-gradient(160deg,#0f172a 0%,#1e293b 40%,#b91c1c 100%);transition:opacity .3s,visibility .3s}
+  .screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+  .title{font-family:'Press Start 2P',cursive;font-size:clamp(1.4rem,4.5vw,2.6rem);line-height:1.4;margin-bottom:8px;background:linear-gradient(90deg,#facc15,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{font-size:1.15rem;opacity:.85;margin-bottom:36px}
+  .menu-buttons{display:flex;flex-direction:column;gap:14px;width:min(320px,90vw)}
+  .btn{border:none;border-radius:16px;padding:16px 24px;font-size:1.15rem;font-weight:700;font-family:'Chakra Petch',sans-serif;cursor:pointer;color:#fff;transition:transform .15s,box-shadow .15s,filter .15s;display:flex;align-items:center;justify-content:center;gap:10px}
+  .btn:hover{transform:translateY(-3px);filter:brightness(1.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:linear-gradient(135deg,#eab308,#ca8a04);box-shadow:0 8px 24px rgba(234,179,8,.4)}
+  .btn-secondary{background:linear-gradient(135deg,#3b82f6,#2563eb);box-shadow:0 8px 24px rgba(59,130,246,.35)}
+  .btn-ghost{background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2)}
+  .level-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;width:min(620px,95vw);margin:20px 0 28px}
+  .level-card{background:rgba(15,23,42,.7);border:2px solid #334155;border-radius:18px;padding:22px 12px;cursor:pointer;transition:all .2s;font-weight:700}
+  .level-card:hover:not(.locked){border-color:#eab308;background:rgba(234,179,8,.25);transform:translateY(-4px)}
+  .level-card.locked{opacity:.45;cursor:not-allowed}
+  .level-card .num{font-size:1.6rem;margin-bottom:4px}
+  .level-card .name{font-size:.9rem;opacity:.8}
+  .settings-box{background:rgba(15,23,42,.75);border:2px solid #334155;border-radius:20px;padding:28px 32px;width:min(360px,92vw);margin-bottom:24px}
+  .setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .setting-row:last-child{border-bottom:none}
+  .toggle{width:56px;height:30px;border-radius:999px;background:#475569;position:relative;cursor:pointer;transition:background .2s}
+  .toggle.on{background:#22c55e}
+  .toggle::after{content:'';position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s}
+  .toggle.on::after{transform:translateX(26px)}
+  #gameUI{position:absolute;inset:0;pointer-events:none;z-index:5}
+  #hud{position:absolute;top:14px;left:0;right:0;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+  .stat{background:rgba(15,23,42,.8);backdrop-filter:blur(10px);padding:8px 16px;border-radius:999px;font-weight:700;font-size:15px;border:1px solid rgba(255,255,255,.12)}
+  #msg{position:absolute;bottom:100px;left:0;right:0;text-align:center;font-weight:700;font-size:17px;text-shadow:0 2px 10px #000}
+  .top-btns{position:absolute;top:12px;right:12px;display:flex;gap:8px;pointer-events:auto}
+  .icon-btn{width:46px;height:46px;border-radius:14px;border:none;background:rgba(15,23,42,.85);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .controls{position:absolute;bottom:18px;left:0;right:0;display:flex;justify-content:center;gap:12px;pointer-events:auto}
+  .controls button{width:62px;height:54px;border-radius:16px;border:2px solid rgba(255,255,255,.6);background:rgba(15,23,42,.8);color:#fff;font-size:22px;font-weight:800;cursor:pointer;touch-action:none}
+  .controls button.pressed{background:#f59e0b;transform:scale(.94)}
+  .overlay-box{background:rgba(15,23,42,.95);border:2px solid #334155;border-radius:24px;padding:40px 36px;max-width:90vw}
+  .overlay-box h2{font-size:2rem;margin-bottom:10px}
+  canvas{display:block;background:#87ceeb}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="mainMenu" class="screen">
+    <div class="title">SAITAMA<br>MUSHROOM RUN</div>
+    <div class="subtitle">การผจญภัยของไซตามะในโลกแห่งเห็ด 👊🍄</div>
+    <div class="menu-buttons">
+      <button class="btn btn-primary" id="btnPlay">▶ เริ่มเกม</button>
+      <button class="btn btn-secondary" id="btnLevels">🗺️ เลือกด่าน</button>
+      <button class="btn btn-ghost" id="btnSettings">⚙️ ตั้งค่า</button>
+      <button class="btn btn-ghost" id="btnFullscreen">⛶ เต็มจอ</button>
+    </div>
+  </div>
+
+  <div id="levelSelect" class="screen hidden">
+    <div class="title" style="font-size:clamp(1.3rem,4vw,2rem)">เลือกด่าน</div>
+    <div class="level-grid" id="levelGrid"></div>
+    <button class="btn btn-ghost" id="btnBackFromLevels">← กลับหน้าแรก</button>
+  </div>
+
+  <div id="settingsScreen" class="screen hidden">
+    <div class="title" style="font-size:clamp(1.3rem,4vw,2rem)">ตั้งค่า</div>
+    <div class="settings-box">
+      <div class="setting-row"><span>เพลงประกอบ</span><div class="toggle" id="musicToggle"></div></div>
+      <div class="setting-row"><span>เต็มจอ</span><button class="btn btn-secondary" style="padding:8px 16px;font-size:14px" id="btnFsSettings">⛶ สลับ</button></div>
+    </div>
+    <button class="btn btn-ghost" id="btnBackFromSettings">← กลับหน้าแรก</button>
+  </div>
+
+  <div id="gameScreen" class="hidden" style="width:100%;height:100%;position:relative">
+    <canvas id="c" tabindex="0"></canvas>
+    <div id="gameUI">
+      <div id="hud">
+        <div class="stat">❤️ <span id="lives">3</span></div>
+        <div class="stat">🍄 <span id="mushCount">0/0</span></div>
+        <div class="stat">👊 <span id="gunStatus">หมัดปกติ</span></div>
+        <div class="stat">ด่าน <span id="levelNum">1</span></div>
+      </div>
+      <div class="top-btns">
+        <button class="icon-btn" id="btnMusicGame">🎵</button>
+        <button class="icon-btn" id="btnFsGame">⛶</button>
+        <button class="icon-btn" id="btnHome">🏠</button>
+      </div>
+      <div id="msg">เก็บเห็ดให้ครบ แล้วไปที่ธง 🏁</div>
+      <div class="controls">
+        <button data-k="left">◀</button>
+        <button data-k="up">▲</button>
+        <button data-k="down">▼</button>
+        <button data-k="right">▶</button>
+        <button data-k="shoot" style="background:#ef4444">👊</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay" class="screen hidden">
+    <div class="overlay-box">
+      <h2 id="ovTitle">Game Over</h2>
+      <p id="ovText" style="margin:12px 0 28px;opacity:.85"></p>
+      <button class="btn btn-primary" id="btnRetry">เล่นอีกครั้ง</button>
+      <button class="btn btn-ghost" id="btnToMenu" style="margin-top:10px">กลับหน้าแรก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+const mainMenu = document.getElementById("mainMenu");
+const levelSelect = document.getElementById("levelSelect");
+const settingsScreen = document.getElementById("settingsScreen");
+const gameScreen = document.getElementById("gameScreen");
+const overlay = document.getElementById("overlay");
+const levelGrid = document.getElementById("levelGrid");
+const msgEl = document.getElementById("msg");
+const livesEl = document.getElementById("lives");
+const mushEl = document.getElementById("mushCount");
+const gunEl = document.getElementById("gunStatus");
+const levelNumEl = document.getElementById("levelNum");
+const musicToggle = document.getElementById("musicToggle");
+
+let W=960,H=540;
+let unlocked = Math.max(1,Math.min(5,+(localStorage.getItem("saitama_unlock")||1)));
+let currentLevel=1,lives=3,gameRunning=false,animId=0,invuln=0,cameraX=0;
+let particles = [];
+let checkpoint = {x: 60, y: H-120, active: false};
+
+/* ===== INPUT ===== */
+const input = {left:false,right:false,up:false,down:false,shoot:false};
+function resetInput(){
+  input.left=input.right=input.up=input.down=input.shoot=false;
+  document.querySelectorAll(".controls button").forEach(b=>b.classList.remove("pressed"));
+}
+function getKeyName(e){
+  const key=(e.key||"").toLowerCase();
+  const code=e.code||"";
+  if(key==="a"||key==="arrowleft"||code==="KeyA"||code==="ArrowLeft") return "left";
+  if(key==="d"||key==="arrowright"||code==="KeyD"||code==="ArrowRight") return "right";
+  if(key==="w"||key==="arrowup"||code==="KeyW"||code==="ArrowUp") return "up";
+  if(key==="s"||key==="arrowdown"||code==="KeyS"||code==="ArrowDown") return "down";
+  if(key===" "||key==="j"||key==="k"||code==="Space"||code==="KeyJ"||code==="KeyK") return "shoot";
+  return null;
+}
+window.addEventListener("keydown",e=>{
+  const name=getKeyName(e); if(!name) return;
+  e.preventDefault(); e.stopPropagation();
+  input[name]=true;
+  const btn=document.querySelector(`.controls button[data-k="${name}"]`);
+  if(btn) btn.classList.add("pressed");
+},true);
+window.addEventListener("keyup",e=>{
+  const name=getKeyName(e); if(!name) return;
+  e.preventDefault();
+  input[name]=false;
+  const btn=document.querySelector(`.controls button[data-k="${name}"]`);
+  if(btn) btn.classList.remove("pressed");
+},true);
+window.addEventListener("blur",resetInput);
+
+document.querySelectorAll(".controls button").forEach(btn=>{
+  const k=btn.dataset.k;
+  const press=e=>{e.preventDefault();try{btn.setPointerCapture(e.pointerId)}catch(ex){};input[k]=true;btn.classList.add("pressed")};
+  const release=e=>{e.preventDefault();input[k]=false;btn.classList.remove("pressed");try{btn.releasePointerCapture(e.pointerId)}catch(ex){}};
+  btn.addEventListener("pointerdown",press);
+  btn.addEventListener("pointerup",release);
+  btn.addEventListener("pointercancel",release);
+});
+
+/* ===== AUDIO & SFX ===== */
+let actx=null,musicOn=false,musicNodes=[],musicInt=null;
+function initAudio(){if(!actx)try{actx=new(window.AudioContext||window.webkitAudioContext)}catch(e){}}
+
+function playSound(type){
+  if(!actx) return;
+  try{
+    if(actx.state==="suspended") actx.resume();
+    const t = actx.currentTime;
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.connect(gain);
+    gain.connect(actx.destination);
+
+    if(type==="jump"){
+      osc.type="sine";
+      osc.frequency.setValueAtTime(150, t);
+      osc.frequency.exponentialRampToValueAtTime(400, t+0.15);
+      gain.gain.setValueAtTime(0.15, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t+0.15);
+      osc.start(t); osc.stop(t+0.16);
+    }else if(type==="highjump"){
+      osc.type="sine";
+      osc.frequency.setValueAtTime(220, t);
+      osc.frequency.exponentialRampToValueAtTime(650, t+0.2);
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t+0.2);
+      osc.start(t); osc.stop(t+0.21);
+    }else if(type==="punch"){
+      osc.type="square";
+      osc.frequency.setValueAtTime(300, t);
+      osc.frequency.exponentialRampToValueAtTime(50, t+0.15);
+      gain.gain.setValueAtTime(0.3, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t+0.15);
+      osc.start(t); osc.stop(t+0.16);
+    }else if(type==="collect"){
+      osc.type="sine";
+      osc.frequency.setValueAtTime(300, t);
+      osc.frequency.setValueAtTime(500, t+0.08);
+      osc.frequency.setValueAtTime(700, t+0.15);
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t+0.25);
+      osc.start(t); osc.stop(t+0.26);
+    }else if(type==="checkpoint"){
+      osc.type="sine";
+      osc.frequency.setValueAtTime(400, t);
+      osc.frequency.setValueAtTime(600, t+0.1);
+      osc.frequency.setValueAtTime(800, t+0.2);
+      gain.gain.setValueAtTime(0.25, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t+0.35);
+      osc.start(t); osc.stop(t+0.36);
+    }else if(type==="hurt"){
+      osc.type="sawtooth";
+      osc.frequency.setValueAtTime(180, t);
+      osc.frequency.linearRampToValueAtTime(60, t+0.25);
+      gain.gain.setValueAtTime(0.25, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t+0.25);
+      osc.start(t); osc.stop(t+0.26);
+    }
+  }catch(e){}
+}
+
+function playTone(f,t,d,v){if(!actx)return;try{const o=actx.createOscillator(),g=actx.createGain();o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.1);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+d+.05)}catch(e){}}
+function startMusic(){try{initAudio();if(!actx)return;if(actx.state==="suspended")actx.resume();if(musicOn)return;musicOn=true;updateMusicUI();const d1=actx.createOscillator(),g1=actx.createGain();d1.type="sine";d1.frequency.value=98;g1.gain.value=.025;d1.connect(g1);g1.connect(actx.destination);d1.start();musicNodes.push(d1);const d2=actx.createOscillator(),g2=actx.createGain();d2.type="sine";d2.frequency.value=146.83;g2.gain.value=.015;d2.connect(g2);g2.connect(actx.destination);d2.start();musicNodes.push(d2);const notes=[261.63,293.66,329.63,392,440,392,329.63,293.66];let i=0;musicInt=setInterval(()=>{if(!musicOn||!actx)return;const t=actx.currentTime;playTone(notes[i%notes.length],t,1.5,.05);playTone(notes[i%notes.length]*0.75,t,1.9,.018);i++},2000)}catch(e){musicOn=false;updateMusicUI()}}
+function stopMusic(){musicOn=false;if(musicInt){clearInterval(musicInt);musicInt=null}musicNodes.forEach(n=>{try{n.stop()}catch(e){};try{n.disconnect()}catch(e){}});musicNodes=[];updateMusicUI()}
+function toggleMusic(){musicOn?stopMusic():startMusic()}
+function updateMusicUI(){musicToggle.classList.toggle("on",musicOn);document.getElementById("btnMusicGame").textContent=musicOn?"🔇":"🎵"}
+
+/* ===== PARTICLE SYSTEM ===== */
+function spawnParticles(x, y, color){
+  for(let i=0; i<8; i++){
+    particles.push({
+      x: x, y: y,
+      vx: (Math.random()-0.5)*6,
+      vy: (Math.random()-0.5)*6 - 2,
+      life: 30,
+      color: color
+    });
+  }
+}
+
+function updateParticles(){
+  for(let i=particles.length-1; i>=0; i--){
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.3;
+    p.life--;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, 4, 4);
+  }
+}
+
+/* ===== FULLSCREEN & RESIZE ===== */
+function toggleFS(){const el=document.documentElement;if(!document.fullscreenElement){el.requestFullscreen?.()||el.webkitRequestFullscreen?.()}else{document.exitFullscreen?.()||document.webkitExitFullscreen?.()}}
+function resize(){const ratio=16/9;let w=window.innerWidth,h=window.innerHeight;if(w/h>ratio)w=h*ratio;else h=w/ratio;canvas.width=W=Math.floor(w);canvas.height=H=Math.floor(h);canvas.style.width=w+"px";canvas.style.height=h+"px"}
+window.addEventListener("resize",resize);resize();
+
+/* ===== LEVELS ===== */
+const LEVELS=[
+  {name:"เมือง Z",bg:"#7dd3fc",ground:"#4ade80",mush:5,enemies:1},
+  {name:"ฐานสมาคมฮีโร่",bg:"#38bdf8",ground:"#22c55e",mush:7,enemies:2},
+  {name:"เขตก่อสร้างรกร้าง",bg:"#a5b4fc",ground:"#65a30d",mush:8,enemies:3},
+  {name:"ฐานใต้ดินลึกลับ",bg:"#fb923c",ground:"#78350f",mush:10,enemies:4},
+  {name:"รังโบรอส (บอส)",bg:"#64748b",ground:"#1e293b",mush:8,enemies:3,boss:true}
+];
+
+function buildLevel(lv){
+  const L=LEVELS[lv-1];
+  const platforms=[{x:0,y:H-50,w:1600,h:60}];
+  platforms.push({x:180,y:H-160,w:140,h:18},{x:420,y:H-240,w:160,h:18},{x:700,y:H-160,w:140,h:18});
+  if(lv>=3){platforms.push({x:280,y:H-320,w:130,h:18},{x:560,y:H-360,w:140,h:18})}
+  if(lv>=4){platforms.push({x:50,y:H-280,w:120,h:18},{x:900,y:H-280,w:130,h:18})}
+
+  const mushrooms=[];
+  const pos=[[90,H-90],[220,H-195],[480,H-275],[760,H-195],[1100,H-90],[320,H-355],[620,H-395],[80,H-315],[980,H-315],[500,H-90],[350,H-90],[850,H-90]];
+  for(let i=0;i<L.mush;i++) mushrooms.push({x:pos[i][0],y:pos[i][1],w:24,h:24,got:false});
+
+  const powerups=[];
+  powerups.push({x:350,y:H-280,w:28,h:28,type:"gun",got:false}); // หมัดจริงจัง
+  if(lv>=2) powerups.push({x:600,y:H-200,w:28,h:28,type:"life",got:false});
+  if(lv>=3) powerups.push({x:850,y:H-320,w:28,h:28,type:"star",got:false});
+  powerups.push({x:720,y:H-200,w:28,h:28,type:"highjump",got:false}); 
+  if(lv===5) powerups.push({x:400,y:H-180,w:28,h:28,type:"gun",got:false});
+
+  const enemies=[];
+  for(let i=0;i<L.enemies;i++){
+    enemies.push({x:300+i*180,y:H-90,w:40,h:34,spd:1.1+lv*.12,min:250+i*40,max:550+i*80,dir:i%2?-1:1});
+  }
+
+  let boss=null;
+  if(L.boss){
+    boss={x:1100,y:H-180,w:90,h:90,hp:12,max:12,spd:1.8,dir:-1,shootTimer:0};
+  }
+
+  const cp = {x: 750, y: H-160-50, w: 32, h: 50, active: false};
+  const goal={x:1400,y:H-110,w:40,h:60};
+  const spikes=[{x:480,y:H-70,w:70,h:20}];
+  if(lv>=2) spikes.push({x:780,y:H-70,w:70,h:20});
+  if(lv>=4) spikes.push({x:200,y:H-70,w:60,h:20});
+
+  return {platforms,mushrooms,powerups,enemies,spikes,boss,checkpointObj:cp,goal,bg:L.bg,ground:L.ground,bullets:[]};
+}
+
+function createPlayer(){
+  return {
+    x:60,y:H-120,w:36,h:56,
+    vx:0,vy:0,onGround:false,crouch:false,
+    facing:1,walkPhase:0,state:"idle",
+    hasGun:false, starTime:0, highJump:false
+  };
+}
+let player, world;
+
+/* ===== PHYSICS & CONTROLS ===== */
+function aabb(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+
+function updatePlayer(){
+  const p=player;
+  const base=p.crouch?1.7:3.5;
+  if(input.left){p.vx=-base;p.facing=-1}
+  else if(input.right){p.vx=base;p.facing=1}
+  else p.vx*=.72;
+  if((input.left||input.right)&&!p.crouch) p.vx*=1.18;
+  p.x+=p.vx;
+
+  if(input.up&&p.onGround&&!p.crouch){
+    p.vy = p.highJump ? -16.5 : -12.6;
+    p.onGround=false; input.up=false;
+    playSound(p.highJump ? "highjump" : "jump");
+  }
+
+  if(input.down&&p.onGround){
+    if(!p.crouch){p.y+=22;p.h=34;p.crouch=true}
+  }else if(p.crouch&&p.onGround){
+    p.y-=22;p.h=56;
+    let blocked=false;
+    for(const pl of world.platforms) if(aabb(p,pl)){blocked=true;break}
+    if(blocked){p.y+=22;p.h=34}else p.crouch=false;
+  }
+
+  // ปล่อยหมัดคลื่นกระแทก (Serious Punch Wave)
+  if(input.shoot && p.hasGun){
+    input.shoot=false;
+    playSound("punch");
+    world.bullets.push({
+      x: p.facing===1 ? p.x+p.w : p.x-18,
+      y: p.y + 14,
+      w:20, h:12,
+      vx: p.facing * 12,
+      life: 90
+    });
+  }
+
+  if(p.starTime>0) p.starTime--;
+
+  p.vy=Math.min(16,p.vy+.55);
+  p.y+=p.vy;
+  p.onGround=false;
+
+  for(const pl of world.platforms){
+    if(!aabb(p,pl)) continue;
+    if(p.vy>=0&&p.y+p.h-p.vy<=pl.y+8){p.y=pl.y-p.h;p.vy=0;p.onGround=true}
+    else if(p.vy<0&&p.y-p.vy>=pl.y+pl.h-8){p.y=pl.y+pl.h;p.vy=0}
+    else{if(p.vx>0)p.x=pl.x-p.w;else if(p.vx<0)p.x=pl.x+pl.w;p.vx=0}
+  }
+  if(p.x<0)p.x=0;
+  if(p.y>H+80) respawnAtCheckpoint();
+
+  if(!p.onGround) p.state="jump";
+  else if(p.crouch) p.state="crouch";
+  else if(Math.abs(p.vx)>2.9){p.state="run";p.walkPhase+=.36}
+  else if(Math.abs(p.vx)>.4){p.state="walk";p.walkPhase+=.22}
+  else p.state="idle";
+
+  cameraX=Math.max(0,Math.min(p.x-W*.35,1450-W));
+}
+
+function updateBullets(){
+  for(let i=world.bullets.length-1;i>=0;i--){
+    const b=world.bullets[i];
+    b.x+=b.vx;
+    b.life--;
+    if(b.life<=0 || b.x<cameraX-50 || b.x>cameraX+W+50){
+      world.bullets.splice(i,1);
+      continue;
+    }
+    for(let j=world.enemies.length-1;j>=0;j--){
+      if(aabb(b,world.enemies[j])){
+        spawnParticles(world.enemies[j].x+20, world.enemies[j].y+15, "#ef4444");
+        world.enemies.splice(j,1);
+        world.bullets.splice(i,1);
+        msgEl.textContent="👊 โดนหมัดเดียวจอด!";
+        break;
+      }
+    }
+    if(world.boss && aabb(b,world.boss)){
+      world.boss.hp -= 3; // หมัดไซตามะแรงพิเศษ
+      world.bullets.splice(i,1);
+      spawnParticles(b.x, b.y, "#facc15");
+      msgEl.textContent=`👊 หมัดสะเทือน! บอสเหลือ ${Math.max(0, world.boss.hp)} HP!`;
+      if(world.boss.hp<=0){
+        spawnParticles(world.boss.x+45, world.boss.y+45, "#fbbf24");
+        world.boss=null;
+        msgEl.textContent="👑 ชนะแล้ว! สมกับเป็นไซตามะ!";
+      }
+    }
+  }
+}
+
+function updateEnemies(){
+  for(const e of world.enemies){
+    e.x+=e.spd*e.dir;
+    if(e.x<e.min||e.x>e.max) e.dir*=-1;
+  }
+  if(world.boss){
+    const b=world.boss;
+    b.x+=b.spd*b.dir;
+    if(b.x<1000||b.x>1300) b.dir*=-1;
+  }
+}
+
+function checkItems(){
+  for(const m of world.mushrooms){
+    if(!m.got&&aabb(player,m)){
+      m.got=true;
+      playSound("collect");
+      spawnParticles(m.x+12, m.y+12, "#ef4444");
+      msgEl.textContent="🍄 เก็บเห็ดพลังงานแล้ว!";
+    }
+  }
+  for(const pw of world.powerups){
+    if(pw.got) continue;
+    if(aabb(player,pw)){
+      pw.got=true;
+      playSound("collect");
+      spawnParticles(pw.x+14, pw.y+14, "#facc15");
+      if(pw.type==="gun"){
+        player.hasGun=true;
+        msgEl.textContent="🔥 ได้รับพลังหมัดจริงจัง! กดปุ่ม 👊 เพื่อโจมตี";
+      }else if(pw.type==="life"){
+        lives=Math.min(lives+1,5);
+        livesEl.textContent=lives;
+        msgEl.textContent="🍄 พลังชีวิตฟื้นฟู!";
+      }else if(pw.type==="star"){
+        player.starTime=300;
+        invuln=performance.now()+5000;
+        msgEl.textContent="⭐ ฮีโร่อร่อยเหาะ (อมตะ)!";
+      }else if(pw.type==="highjump"){
+        player.highJump=true;
+        msgEl.textContent="🥾 รองเท้าวิ่งทะลุขีดจำกัด (กระโดดสูง)!";
+      }
+    }
+  }
+
+  const cp = world.checkpointObj;
+  if(cp && !cp.active && aabb(player, cp)){
+    cp.active = true;
+    checkpoint = {x: cp.x, y: cp.y, active: true};
+    playSound("checkpoint");
+    spawnParticles(cp.x+16, cp.y+25, "#22c55e");
+    msgEl.textContent="🚩 บันทึก Checkpoint สำเร็จ!";
+  }
+}
+
+function checkHazards(){
+  if(performance.now()<invuln || player.starTime>0) return;
+  for(const s of world.spikes) if(aabb(player,s)){hurt();return}
+  for(const e of world.enemies) if(aabb(player,e)){hurt();return}
+  if(world.boss&&aabb(player,world.boss)){
+    if(player.vy>0&&player.y+player.h<world.boss.y+40){
+      world.boss.hp-=4; // เหยียบแรงสะใจสไตล์ไซตามะ
+      player.vy=-12;
+      playSound("jump");
+      spawnParticles(world.boss.x+45, world.boss.y+20, "#fbbf24");
+      msgEl.textContent=`💥 กระโดดเหยียบบอส! เหลือ ${Math.max(0, world.boss.hp)} HP`;
+      if(world.boss.hp<=0){world.boss=null;msgEl.textContent="👑 กำจัดบอสราบคาบ!"}
+    }else hurt();
+  }
+}
+
+function hurt(){
+  if(performance.now()<invuln) return;
+  playSound("hurt");
+  invuln=performance.now()+1500;
+  lives--;
+  livesEl.textContent=lives;
+  player.vy=-7;
+  player.vx = -player.facing * 5;
+  player.hasGun=false;
+  if(lives<=0){gameRunning=false;showOverlay("💀 GAME OVER","ไซตามะพลาดท่าแล้ว")}
+  else msgEl.textContent=`โดนโจมตี! เสียสมาธิเหลือ ${lives} ชีวิต`;
+}
+
+function respawnAtCheckpoint(){
+  playSound("hurt");
+  lives--; livesEl.textContent=lives;
+  if(lives<=0){
+    gameRunning=false;
+    showOverlay("💀 GAME OVER","ไซตามะพลาดท่าแล้ว");
+    return;
+  }
+  player.x = checkpoint.active ? checkpoint.x : 60;
+  player.y = checkpoint.active ? checkpoint.y - 20 : H-120;
+  player.vy = 0; player.vx = 0; player.crouch = false; player.h = 56;
+  player.hasGun = false;
+  invuln = performance.now() + 1500;
+  msgEl.textContent=`ฟื้นคืนชีพที่จุดเซฟ! เหลือ ${lives} ชีวิต`;
+}
+
+function checkGoal(){
+  if(!aabb(player,world.goal)) return;
+  if(world.boss){
+    msgEl.textContent="ต้องกำจัดบอสดรกก่อนถึงจะผ่านด่าน!";
+    return;
+  }
+  const left=world.mushrooms.filter(m=>!m.got).length;
+  if(left===0){
+    gameRunning=false;
+    if(currentLevel<5){
+      unlocked=Math.max(unlocked,currentLevel+1);
+      localStorage.setItem("saitama_unlock",unlocked);
+      showOverlay("🎉 เคลียร์ด่าน!",`ปลดล็อกด่าน ${currentLevel+1}`);
+    }else showOverlay("🏆 สุดยอดฮีโร่!","เคลียร์ครบทุกด่านและปราบวายร้ายสำเร็จ!");
+  }else msgEl.textContent=`ยังเก็บเห็ดไม่ครบ ขาดอีก ${left} ดอก`;
+}
+
+/* ===== DRAW ===== */
+function draw(){
+  ctx.fillStyle=world.bg;
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="rgba(255,255,255,.12)";
+  ctx.beginPath();ctx.ellipse(180-cameraX*.25,H-30,160,55,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.ellipse(580-cameraX*.15,H-20,200,45,0,0,7);ctx.fill();
+
+  ctx.save();
+  ctx.translate(-cameraX,0);
+
+  for(const p of world.platforms){
+    ctx.fillStyle=world.ground;
+    ctx.fillRect(p.x,p.y,p.w,p.h);
+    ctx.fillStyle="rgba(255,255,255,.22)";
+    ctx.fillRect(p.x,p.y,p.w,5);
+  }
+  for(const s of world.spikes){
+    ctx.fillStyle="#e2e8f0";
+    for(let i=0;i<s.w;i+=12){
+      ctx.beginPath();
+      ctx.moveTo(s.x+i,s.y+s.h);ctx.lineTo(s.x+i+6,s.y);ctx.lineTo(s.x+i+12,s.y+s.h);ctx.fill();
+    }
+  }
+
+  const cp = world.checkpointObj;
+  if(cp){
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillRect(cp.x+4, cp.y, 6, cp.h);
+    ctx.fillStyle = cp.active ? "#22c55e" : "#ef4444";
+    ctx.beginPath();
+    ctx.moveTo(cp.x+10, cp.y+5);
+    ctx.lineTo(cp.x+32, cp.y+15);
+    ctx.lineTo(cp.x+10, cp.y+25);
+    ctx.fill();
+  }
+
+  for(const m of world.mushrooms){
+    if(m.got) continue;
+    ctx.fillStyle="#fef3c7";ctx.fillRect(m.x+8,m.y+12,8,12);
+    ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(m.x+12,m.y+12,12,Math.PI,0);ctx.fill();
+    ctx.fillStyle="#fff";
+    ctx.beginPath();ctx.arc(m.x+8,m.y+9,2.5,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(m.x+16,m.y+7,2.5,0,7);ctx.fill();
+  }
+
+  for(const pw of world.powerups){
+    if(pw.got) continue;
+    if(pw.type==="gun"){
+      ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(pw.x+14,pw.y+14,13,0,7);ctx.fill();
+      ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(pw.x+14,pw.y+10,6,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.font="16px Arial";ctx.fillText("🥊",pw.x+4,pw.y+20);
+    }else if(pw.type==="life"){
+      ctx.fillStyle="#22c55e";ctx.beginPath();ctx.arc(pw.x+14,pw.y+14,13,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.font="18px Arial";ctx.fillText("🍄",pw.x+3,pw.y+21);
+    }else if(pw.type==="star"){
+      ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(pw.x+14,pw.y+14,13,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.font="18px Arial";ctx.fillText("⭐",pw.x+3,pw.y+21);
+    }else if(pw.type==="highjump"){
+      ctx.fillStyle="#3b82f6";ctx.beginPath();ctx.arc(pw.x+14,pw.y+14,13,0,7);ctx.fill();
+      ctx.fillStyle="#fff";ctx.font="18px Arial";ctx.fillText("🥾",pw.x+3,pw.y+21);
+    }
+  }
+
+  for(const b of world.bullets){
+    ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(b.x+b.w/2,b.y+b.h/2,8,0,7);ctx.fill();
+    ctx.fillStyle="#facc15";ctx.beginPath();ctx.arc(b.x+b.w/2,b.y+b.h/2,4,0,7);ctx.fill();
+  }
+
+  for(const e of world.enemies){
+    ctx.fillStyle="#7c3aed";ctx.fillRect(e.x,e.y,e.w,e.h);
+    ctx.fillStyle="#fff";ctx.fillRect(e.x+8,e.y+8,8,8);ctx.fillRect(e.x+24,e.y+8,8,8);
+    ctx.fillStyle="#111";ctx.fillRect(e.x+10,e.y+10,4,4);ctx.fillRect(e.x+26,e.y+10,4,4);
+  }
+
+  if(world.boss){
+    const b=world.boss;
+    ctx.fillStyle="#6b21a8";ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.fillStyle="#fff";ctx.fillRect(b.x+16,b.y+22,18,18);ctx.fillRect(b.x+56,b.y+22,18,18);
+    ctx.fillStyle="#ef4444";ctx.fillRect(b.x+20,b.y+26,10,10);ctx.fillRect(b.x+60,b.y+26,10,10);
+    ctx.fillStyle="#1e293b";ctx.fillRect(b.x-15,b.y-22,b.w+30,12);
+    ctx.fillStyle="#ef4444";ctx.fillRect(b.x-15,b.y-22,(b.w+30)*(b.hp/b.max),12);
+    ctx.strokeStyle="#fff";ctx.strokeRect(b.x-15,b.y-22,b.w+30,12);
+    ctx.fillStyle="#fff";ctx.font="14px Arial";ctx.fillText("BOROS",b.x+b.w/2-24,b.y-28);
+  }
+
+  ctx.fillStyle="#fbbf24";ctx.fillRect(world.goal.x,world.goal.y,world.goal.w,world.goal.h);
+  ctx.font="28px Arial";ctx.fillText("🏁",world.goal.x+4,world.goal.y+38);
+
+  drawSaitama();
+  drawParticles();
+  ctx.restore();
+}
+
+function drawSaitama(){
+  const p=player;
+  if(performance.now()<invuln&&Math.floor(performance.now()/80)%2===0) return;
+
+  const x=p.x,y=p.y,f=p.facing;
+  ctx.save();
+  ctx.translate(x+p.w/2,y);ctx.scale(f,1);ctx.translate(-p.w/2,0);
+  ctx.strokeStyle="#1e293b";ctx.lineWidth=5;ctx.lineCap="round";
+
+  if(p.state==="jump"){
+    ctx.beginPath();ctx.moveTo(10,38);ctx.lineTo(4,52);ctx.moveTo(26,38);ctx.lineTo(32,52);
+    ctx.moveTo(6,24);ctx.lineTo(-2,12);ctx.moveTo(30,24);ctx.lineTo(38,12);ctx.stroke();
+  }else if(p.state==="crouch"){
+    ctx.beginPath();ctx.moveTo(10,20);ctx.lineTo(4,30);ctx.moveTo(26,20);ctx.lineTo(32,30);
+    ctx.moveTo(6,14);ctx.lineTo(0,24);ctx.moveTo(30,14);ctx.lineTo(36,24);ctx.stroke();
+  }else if(p.state==="run"||p.state==="walk"){
+    const amp=p.state==="run"?9:5;const ph=Math.sin(p.walkPhase)*amp;
+    ctx.beginPath();ctx.moveTo(10,38);ctx.lineTo(8+ph,54);ctx.moveTo(26,38);ctx.lineTo(28-ph,54);
+    ctx.moveTo(6,24);ctx.lineTo(0-ph*.6,36);ctx.moveTo(30,24);ctx.lineTo(36+ph*.6,18);ctx.stroke();
+  }else{
+    ctx.beginPath();ctx.moveTo(10,40);ctx.lineTo(10,54);ctx.moveTo(26,40);ctx.lineTo(26,54);
+    ctx.moveTo(6,24);ctx.lineTo(2,36);ctx.moveTo(30,24);ctx.lineTo(34,36);ctx.stroke();
+  }
+
+  // ชุดสูทฮีโร่สีเหลืองของไซตามะ
+  ctx.fillStyle = "#eab308";
+  ctx.fillRect(6,p.crouch?14:18,24,p.crouch?16:24);
+  // เข็มขัดสีดำคาดหัวเข็มขัดสีแดง
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(6, p.crouch?24:32, 24, 4);
+  ctx.fillStyle = "#ef4444";
+  ctx.fillRect(14, p.crouch?24:32, 8, 4);
+
+  // หัวโล้นไซตามะ (ผิวเนื้อ)
+  ctx.fillStyle="#fde047";
+  ctx.beginPath();ctx.arc(18,10,11,0,7);ctx.fill();
+  // หน้าตานิ่งๆ เอกลักษณ์ไซตามะ (จุดตาดำเล็กๆ)
+  ctx.fillStyle="#111";
+  ctx.fillRect(14,9,2,2);ctx.fillRect(20,9,2,2);
+  ctx.beginPath();ctx.arc(18,14,3,0,Math.PI);ctx.stroke(); // ปากยิ้มเรียบๆ
+
+  // ถุงมือสีแดง / หมัด
+  ctx.fillStyle = "#ef4444";
+  ctx.fillRect(28, p.crouch?18:22, 8, 8);
+
+  ctx.restore();
+}
+
+function loop(){
+  if(gameRunning){
+    updatePlayer();
+    updateBullets();
+    updateEnemies();
+    updateParticles();
+    checkItems();
+    checkHazards();
+    checkGoal();
+    const got=world.mushrooms.filter(m=>m.got).length;
+    mushEl.textContent=`${got}/${world.mushrooms.length}`;
+    gunEl.textContent = player.hasGun ? "หมัดจริงจัง" : "หมัดปกติ";
+  }
+  draw();
+  animId=requestAnimationFrame(loop);
+}
+
+/* ===== UI ===== */
+function showScreen(name){
+  [mainMenu,levelSelect,settingsScreen,gameScreen,overlay].forEach(s=>s.classList.add("hidden"));
+  if(name==="main") mainMenu.classList.remove("hidden");
+  if(name==="levels") levelSelect.classList.remove("hidden");
+  if(name==="settings") settingsScreen.classList.remove("hidden");
+  if(name==="game") gameScreen.classList.remove("hidden");
+  if(name==="overlay") overlay.classList.remove("hidden");
+}
+
+function buildLevelButtons(){
+  levelGrid.innerHTML="";
+  for(let i=1;i<=5;i++){
+    const card=document.createElement("div");
+    card.className="level-card"+(i>unlocked?" locked":"");
+    card.innerHTML=`<div class="num">${i>unlocked?"🔒":i}</div><div class="name">${LEVELS[i-1].name}</div>`;
+    if(i<=unlocked) card.onclick=()=>startLevel(i);
+    levelGrid.appendChild(card);
+  }
+}
+
+function startLevel(n){
+  if(n>unlocked) return;
+  currentLevel=n;lives=3;
+  livesEl.textContent=lives;levelNumEl.textContent=n;
+  player=createPlayer();
+  world=buildLevel(n);
+  checkpoint = {x: 60, y: H-120, active: false};
+  cameraX=0;invuln=0;gameRunning=true;
+  particles=[];
+  msgEl.textContent = n===5 ? "ศึกตัดสินกับบอสดรก! เก็บหมัดจริงจังแล้วซัดเลย" : `ด่าน ${n}: ${LEVELS[n-1].name}`;
+  showScreen("game");
+  resetInput();
+  setTimeout(()=>canvas.focus(),50);
+  cancelAnimationFrame(animId);
+  animId=requestAnimationFrame(loop);
+}
+
+function showOverlay(title,text){
+  document.getElementById("ovTitle").textContent=title;
+  document.getElementById("ovText").textContent=text;
+  showScreen("overlay");
+}
+
+function goHome(){
+  gameRunning=false;
+  cancelAnimationFrame(animId);
+  showScreen("main");
+  buildLevelButtons();
+}
+
+document.getElementById("btnPlay").onclick=()=>startLevel(Math.min(unlocked,5));
+document.getElementById("btnLevels").onclick=()=>{buildLevelButtons();showScreen("levels")};
+document.getElementById("btnSettings").onclick=()=>showScreen("settings");
+document.getElementById("btnFullscreen").onclick=toggleFS;
+document.getElementById("btnBackFromLevels").onclick=()=>showScreen("main");
+document.getElementById("btnBackFromSettings").onclick=()=>showScreen("main");
+document.getElementById("btnFsSettings").onclick=toggleFS;
+musicToggle.onclick=toggleMusic;
+document.getElementById("btnMusicGame").onclick=toggleMusic;
+document.getElementById("btnFsGame").onclick=toggleFS;
+document.getElementById("btnHome").onclick=goHome;
+document.getElementById("btnRetry").onclick=()=>startLevel(currentLevel);
+document.getElementById("btnToMenu").onclick=goHome;
+
+buildLevelButtons();
+updateMusicUI();
+</script>
+</body>
+</html>ห
